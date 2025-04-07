@@ -120,7 +120,7 @@ export const loginController = async (req: Request, res: Response, next: NextFun
             status: true,
             statusCode: 201,
             result: {
-                token: tokens.access_token,
+                access_token: tokens.access_token,
                 refresh_token: tokens.refresh_token,
                 user,
             }, 
