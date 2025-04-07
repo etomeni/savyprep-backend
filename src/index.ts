@@ -12,7 +12,7 @@ import mongoose from 'mongoose';
 import 'dotenv/config';
 
 import authRoutes from './routes/auth.routes.js';
-// import orderRoutes from "./routes/order.routes.js";
+import prepRoutes from "./routes/prep.routes.js";
 // import chatRoutes from "./routes/chat.routes.js";
 
 import { get404, get500 } from './controllers/error.js';
@@ -48,7 +48,7 @@ app.use(bodyParser.json({limit: "50mb"}));
 // app.use(getSource);
 // app.use('/api', apiV1Routes);
 app.use('/api/v1/auth', authRoutes);
-// app.use("/api/orders", orderRoutes);
+app.use("/api/v1/prep", prepRoutes);
 // app.use("/api/chat", chatRoutes);
 
 

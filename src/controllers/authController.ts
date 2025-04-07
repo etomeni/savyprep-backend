@@ -201,6 +201,24 @@ export const logoutCtrl = async (req: Request, res: Response, next: NextFunction
     }
 }
 
+export const deleteAccountCtrl = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const user_id = req.body.authMiddlewareParam._id;
+
+        const loggedOutUser = await userTokenModel.deleteMany({ user_id });
+        const deletedUser = await userModel.findByIdAndDelete(user_id);
+
+        return res.status(201).json({
+            status: true,
+            statusCode: 201,
+            message: 'Logged out successfully!',
+        });
+    } catch (error: any) {
+        if (!error.statusCode) error.statusCode = 500;
+        next(error);
+    }
+}
+
 
 // forgot password ::-> verifies the user and sends email to verify its him requesting the rest
 export const sendPasswordResetEmailCtr = async (req: Request, res: Response, next: NextFunction) => {

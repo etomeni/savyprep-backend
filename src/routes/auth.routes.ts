@@ -17,6 +17,7 @@ import {
     setNewPasswordCtr,
     verifyEmailTokenCtr,
     sendPasswordResetEmailCtr,
+    deleteAccountCtrl,
 } from '@/controllers/authController.js';
 
 
@@ -73,6 +74,7 @@ router.post(
     refreshAuthCtrl
 );
 
+// logout
 router.post(
     "/logout",
     [
@@ -83,6 +85,20 @@ router.post(
         routeValidationResult
     ],
     logoutCtrl
+);
+
+// delete user account
+router.delete(
+    "/delete-account",
+    [
+        // body('refresh_token')
+        //     .isString().trim().notEmpty()
+        //     .withMessage('refresh_token is required'),
+        
+        routeValidationResult,
+        authMiddleware
+    ],
+    deleteAccountCtrl
 );
 
 // send Password Reset Email
