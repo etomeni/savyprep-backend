@@ -9,7 +9,8 @@ import routeValidationResult from '@/middleware/routeValidationResult.js';
 // Controllers
 import { 
     ChatUsController,
-    getDashboardStatController
+    getDashboardStatController,
+    checkVersionUpdateController
 } from '@/controllers/genController.js';
 
 
@@ -41,6 +42,17 @@ router.post("/chat-us",
         // authMiddleware,
     ], 
     ChatUsController
+);
+
+// check-version-update
+router.get("/check-version-update", 
+    [
+        query("userVersion").isString().trim().notEmpty().withMessage("userVersion is required"),
+
+        routeValidationResult,
+        // authMiddleware,
+    ], 
+    checkVersionUpdateController
 );
 
 

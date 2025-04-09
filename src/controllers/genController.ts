@@ -1,7 +1,5 @@
 import { Request, Response, NextFunction } from "express-serve-static-core";
-import { generateBySystemInstructions, generateByTextInput, getExamFeedbackPrompt, getExamsQuestionsPrompt, getInterviewFeedbackPrompt, getInterviewQuestionsPrompt } from "./aiController.js";
 import preparationsModel, { prepInterface } from "@/models/preparations.model.js";
-import prepFeedbackModel from "@/models/prepFeedback.model.js";
 import { sendAdminUserContactUsNotification } from "@/util/mail.js";
 import { contactUsModel } from "@/models/contact.model.js";
 
@@ -10,6 +8,12 @@ import { contactUsModel } from "@/models/contact.model.js";
 
 // utilities
 // import { generateTokens, verifyRefreshToken } from "@/util/JWT_tokens.js";
+
+const appVersion = {
+    // stableVerion: '1.0.0',
+    latestVersion: '1.2.0',
+    forceUpdate: true,
+};
 
 
 // get dashboaard statistics
@@ -67,6 +71,55 @@ export const ChatUsController = async (req: Request, res: Response, next: NextFu
                 chatUs: newContactMsgResponds
             },
             message: "Thank you for reaching out to us, we're glad to have received your message and we'll respond soon."
+        });
+
+    } catch (error: any) {
+        if (!error.statusCode) error.statusCode = 500;
+        next(error);
+    }
+}
+
+
+// check-version-update
+export const checkVersionUpdateController = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        // const user_id = req.body.authMiddlewareParam._id;
+        const userVersion = req.body.userVersion;
+
+        // Split the version string into parts
+        const userVersionParts = userVersion.split('.').map(Number);
+        // Ensure we have exactly 3 parts (pad with 0 if needed)
+        while (userVersionParts.length < 3) userVersionParts.push(0);
+        const [userMajor, userMinor, userPatch] = userVersionParts;
+
+
+        // Split the version string into parts
+        const appVersionParts = appVersion.latestVersion.split('.').map(Number);
+        // Ensure we have exactly 3 parts (pad with 0 if needed)
+        while (appVersionParts.length < 3) appVersionParts.push(0);
+        const [appMajor, appMinor, appPatch] = appVersionParts;
+
+
+        let forceUpdate = false;
+
+        if (appMajor > userMajor) {
+            forceUpdate = true;
+        } else if (appMinor > userMinor) {
+            forceUpdate = true;
+        } else if (appVersion.forceUpdate && appPatch > userPatch) {
+            forceUpdate = true;
+        } else{
+            forceUpdate =  false;
+        }
+
+        return res.status(200).json({
+            status: true,
+            statusCode: 200,
+            result: {
+                forceUpdate,
+                latestVersion: appVersion.latestVersion
+            },
+            message: "success"
         });
 
     } catch (error: any) {
