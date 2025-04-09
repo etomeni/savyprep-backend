@@ -430,10 +430,10 @@ export const generateExamFeedbackController = async (req: Request, res: Response
         
         // get the prompt to use
         const prompt = getExamFeedbackPrompt(transcript, prepDetails.numberOfQuestions);
-        console.log(prompt);
+        console.log("prompt");
 
         const response = await generateBySystemInstructions(prompt.prompt, prompt.system);
-        console.log(response);
+        console.log("feedback response");
         if (!response.status || !response.result) {
             return res.status(500).json({
                 status: false,
@@ -444,7 +444,7 @@ export const generateExamFeedbackController = async (req: Request, res: Response
         }
         
         const feedbackResponse: aiExaminerFeedbackResponseInterface = formatAiResponse(response.result);
-        console.log("feedbackResponse ", feedbackResponse);
+        console.log("formated feedbackResponse ");
         
 
         const newPrepFeedback = await new prepFeedbackModel({
@@ -492,7 +492,6 @@ export const generateExamFeedbackController = async (req: Request, res: Response
         );
 
         console.log("updatedInterview");
-        
 
 
         return res.status(200).json({
@@ -506,6 +505,8 @@ export const generateExamFeedbackController = async (req: Request, res: Response
         });
 
     } catch (error: any) {
+        console.log(error);
+        
         if (!error.statusCode) error.statusCode = 500;
         next(error);
     }
