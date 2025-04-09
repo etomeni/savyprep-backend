@@ -5,6 +5,7 @@ import { body, param, query  } from 'express-validator';
 // middleWares
 import authMiddleware from '@/middleware/auth.js';
 import routeValidationResult from '@/middleware/routeValidationResult.js';
+import { upload_diskStorage } from '@/middleware/multerFile.js';
 
 // Controllers
 import { 
@@ -63,18 +64,14 @@ router.post("/generate-interview-feedback",
 // generate exams questions
 router.post("/generate-exams-questions", 
     [
-        // body("userId").isString().trim().notEmpty().withMessage("User ID is required"),
-        // body("userName").notEmpty().withMessage("User name is required"),
-        // body("userEmail").isString().trim().isEmail().withMessage("User email is required"),
+        // Featured image validation (optional)
+        upload_diskStorage.fields([{ name: 'documents' }]),
 
         body("title").isString().trim().notEmpty().withMessage("Title is required"),
-        body("role").isString().trim().notEmpty().withMessage("Role is required"),
         body("level").isString().trim().notEmpty().withMessage("Level is required"),
-        body("techstack").isArray().withMessage("Techstack should be an array"),
-        body("type").isString().trim().notEmpty().withMessage("Type is required"),
+        body("studyType").isString().trim().notEmpty().withMessage("Type is required"),
         body("amount").isInt({ min: 1 }).withMessage("Amount should be a positive integer"),
-        body("jobDescription").optional().isString().trim().withMessage("Job description should be a string"),
-        // body("cvFile").optional().isString().withMessage("CV file should be a string"),
+        // body("documents").optional().isString().trim().withMessage("Job description should be a string"),
 
         routeValidationResult,
         authMiddleware,
@@ -86,7 +83,6 @@ router.post("/generate-exams-questions",
 router.post("/generate-exams-feedback", 
     [
         body("prepId").isString().trim().notEmpty().withMessage("prepId is required"),
-
         body("transcript").isArray().withMessage("Transcript should be an array"),
 
         routeValidationResult,

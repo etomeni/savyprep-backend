@@ -28,6 +28,9 @@ export interface prepInterface {
 		question: string; 
 		userAnswer: string 
 		aiAnswer: string; 
+		options?: string[];
+		reference: string;
+		explanation: string;
 	}[],
 
 	modelChatHistory: {
@@ -79,6 +82,9 @@ const PreparationSchema = new Schema<prepInterface>(
 				question: { type: String },
 				userAnswer: { type: String },
 				aiAnswer: { type: String },
+				options: { type: [String] },
+				reference: { type: String },
+				explanation: { type: String },
 			}]
 		},
 

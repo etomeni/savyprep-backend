@@ -1,7 +1,13 @@
 import { Request, Response, NextFunction } from "express-serve-static-core";
-import { generateBySystemInstructions, generateByTextInput, getExamFeedbackPrompt, getInterviewFeedbackPrompt, getInterviewQuestionsPrompt } from "./aiController.js";
+import fs from "fs";
+import {
+    generateBySystemInstructions, generateByTextInput, 
+    getExamFeedbackPrompt, getExamsQuestionsPrompt, 
+    getInterviewFeedbackPrompt, getInterviewQuestionsPrompt 
+} from "./aiController.js";
 import preparationsModel, { prepInterface } from "@/models/preparations.model.js";
 import prepFeedbackModel from "@/models/prepFeedback.model.js";
+import { uploadFileToFirebase } from "./firebase.js";
 
 // models
 // import { userModel } from '@/models/users.model.js';
@@ -14,6 +20,16 @@ type QuestionItemInterface = {
     question: string;
     userAnswer: string;
     aiAnswer: string;
+};
+
+type examQuestionInterface = {
+    question: string;
+    userAnswer: string;
+    aiAnswer: string;
+    
+    options?: string[];
+    reference: string;
+    explanation: string;
 };
 
 type aiInterviewerFeedbackResponseInterface = {
@@ -54,6 +70,16 @@ type aiExaminerFeedbackResponseInterface = {
     finalAssessment: string;
 }
 
+type fileUploadIntercae = {
+    fieldname: string,
+    originalname: string,
+    encoding: string,
+    mimetype: string,
+    destination: string,
+    filename: string,
+    path: string,
+    size: number
+}
 
 function formatAiResponse(questionStr: string) {
     try {
@@ -191,7 +217,7 @@ export const generateInterviewFeedbackController = async (req: Request, res: Res
         }
         
         const feedbackResponse: aiInterviewerFeedbackResponseInterface = formatAiResponse(response.result);
-        console.log(feedbackResponse);
+        // console.log(feedbackResponse);
         
 
         const newPrepFeedback = await new prepFeedbackModel({
@@ -228,12 +254,14 @@ export const generateInterviewFeedbackController = async (req: Request, res: Res
             });
         }
 
-        interviewPrep.updateOne({
-            transcript: transcript || feedbackResponse.questionReviews,
-            status: "Completed"
-        });
-        interviewPrep.save();
-
+        const updatedInterview = await preparationsModel.findByIdAndUpdate(
+            interviewPrep._id,
+            {
+                transcript: transcript || feedbackResponse.questionReviews,
+                status: "Completed"
+            },
+            {new: true}
+        );
 
         return res.status(200).json({
             status: true,
@@ -257,15 +285,60 @@ export const generateInterviewFeedbackController = async (req: Request, res: Res
 export const generateExamQuestionsController = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const user_id = req.body.authMiddlewareParam._id;
+        const user_email = req.body.authMiddlewareParam.email;
 
-        // const role = req.body.role;
-        const { title, role, level, techstack, type, amount, jobDescription, } = req.body;
-        // role: string, level: string, techstack: string[], type: string, amount: number,
-        // jobDescription?: string, cvFile?: string
+        const { title, level, studyType, amount, } = req.body;
 
+        const files: any = req.files;
+        const documentFiles: fileUploadIntercae[] = files.documents;
+        // console.log(documentFiles);
 
-        // TODO:::: check if the user has uploaded their CV, if so add it to the prompt
-        const prompt = getInterviewQuestionsPrompt(role, level, techstack, type, amount, jobDescription);
+        let uploadedFile: string[] = [];
+        if (documentFiles) {
+            uploadedFile = await Promise.all(
+                documentFiles.map(async element => {
+                    const response = await uploadFileToFirebase(
+                        files, element.originalname,
+                        user_id, user_email,
+                        title, level, studyType, amount,
+                    );
+                    // console.log(response);
+
+                    // Optionally delete the local files after uploading
+                    if (element.path) fs.unlinkSync(element.path);
+    
+                    if (response.fileUrl) {
+                        // uploadedFile.push(response.fileUrl);
+                        return response.fileUrl
+                    } else {
+                        return '';
+                    }
+                })
+            );
+        } else {
+            return res.status(401).json({
+                status: false,
+                statusCode: 401,
+                message: "Study Documents are required."
+            });
+        }
+
+        // Using Boolean (removes all falsy values - '', 0, false, null, undefined)
+        uploadedFile = uploadedFile.filter(Boolean);
+
+        if (!uploadedFile.length) {
+            return res.status(500).json({
+                status: false,
+                statusCode: 500,
+                message: "something went wrong, failed to uplaod document."
+            });
+        }
+
+        const prompt = getExamsQuestionsPrompt(
+            studyType, level, amount, uploadedFile
+        );
+        // console.log(prompt);
+        
 
         const response = await generateByTextInput(prompt);
         // console.log(response);
@@ -278,26 +351,20 @@ export const generateExamQuestionsController = async (req: Request, res: Respons
             });
         }
         
-        const Questions: QuestionItemInterface[] = formatAiResponse(response.result);
+        const Questions: examQuestionInterface[] = formatAiResponse(response.result);
 
         const newPrep = await new preparationsModel({
             userId: user_id,
-            prepType: "Interview",
+            prepType: "Exam",
             prepTitle: title,
             numberOfQuestions: amount,
             difficultyLevel: level,
-            interview: {
-                jobRole: role,
-                techstack: techstack,
-                interviewType: type,
-                jobDescription: jobDescription ? jobDescription : ''
+            exam: {
+                studyType: studyType,
+                documents: uploadedFile,
+                tags: undefined,
+                language: undefined
             },
-            // exam: {
-            //     studyType: "multipleChoices",
-            //     documents: [],
-            //     tags: undefined,
-            //     language: undefined
-            // },
             transcript: Questions,
             modelChatHistory: [
                 {
@@ -312,14 +379,13 @@ export const generateExamQuestionsController = async (req: Request, res: Respons
             ],
             // status: "Not completed",
         }).save()
-        // const newReleaseResponds = await newRelease.save();
 
         if (!newPrep) {
             return res.status(500).json({
                 status: false,
                 statusCode: 500,
                 // result: {},
-                message: "unable to save intervew questions.",
+                message: "unable to save exams questions.",
             });
         }
 
@@ -346,10 +412,11 @@ export const generateExamFeedbackController = async (req: Request, res: Response
         const user_id = req.body.authMiddlewareParam._id;
 
         const prepId: string = req.body.prepId;
-        const transcript: QuestionItemInterface[] = req.body.transcript;
+        const timeElapsed: number = req.body.timeElapsed; // seconds
+        const transcript: examQuestionInterface[] = req.body.transcript;
 
-        const interviewPrep = await preparationsModel.findById(prepId);
-        if (!interviewPrep) {
+        const prepDetails = await preparationsModel.findById(prepId);
+        if (!prepDetails) {
             return res.status(401).json({
                 status: false,
                 statusCode: 401,
@@ -358,8 +425,8 @@ export const generateExamFeedbackController = async (req: Request, res: Response
         }
         
         // get the prompt to use
-        const prompt = getExamFeedbackPrompt(transcript, interviewPrep.numberOfQuestions);
-        console.log(prompt);
+        const prompt = getExamFeedbackPrompt(transcript, prepDetails.numberOfQuestions);
+        // console.log(prompt);
 
         const response = await generateBySystemInstructions(prompt.prompt, prompt.system);
         // console.log(response);
@@ -378,14 +445,14 @@ export const generateExamFeedbackController = async (req: Request, res: Response
             userId: user_id,
             prepType: "Exam",
 
-            prepId: interviewPrep.id || prepId,
-            prepTitle: interviewPrep.prepTitle,
-            numberOfQuestions: interviewPrep.numberOfQuestions,
-            difficultyLevel: interviewPrep.difficultyLevel,
+            prepId: prepDetails.id || prepId,
+            prepTitle: prepDetails.prepTitle,
+            numberOfQuestions: prepDetails.numberOfQuestions,
+            difficultyLevel: prepDetails.difficultyLevel,
         
             totalScore: feedbackResponse.totalScore,
             percentageScore: feedbackResponse.percentageScore,
-            totalQuestions: interviewPrep.numberOfQuestions || feedbackResponse.totalQuestions,
+            totalQuestions: prepDetails.numberOfQuestions || feedbackResponse.totalQuestions,
             answeredQuestions: feedbackResponse.answeredQuestions,
     
             questionReviews: transcript,
@@ -408,11 +475,14 @@ export const generateExamFeedbackController = async (req: Request, res: Response
             });
         }
 
-        interviewPrep.updateOne({
-            transcript: transcript,
-            status: "Completed"
-        });
-        interviewPrep.save();
+        const updatedInterview = await preparationsModel.findByIdAndUpdate(
+            prepDetails._id,
+            {
+                transcript: transcript,
+                status: "Completed"
+            },
+            {new: true}
+        );
 
 
         return res.status(200).json({

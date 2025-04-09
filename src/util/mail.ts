@@ -20,10 +20,66 @@ const mailTransporter = () => {
     return mailTransporter;
 }
 
-const formatMessageForEmail = (message: string) => {
-    return message.replace(/\n/g, '<br>');
-};
-  
+export const sendAdminUserContactUsNotification = (email: string, name: string, message: string) => {
+    try {
+        // Read the HTML file synchronously
+        const data = fs.readFileSync("./src/emailTemplates/contactUs_NotifyAdminMail.html", 'utf8');
+        
+
+        // Replace the placeholder with a dynamic value (e.g., "John")
+        const Htmltemplate = data.replace(/{{name}}/g, name)
+        .replace(/{{email}}/g, email)
+        .replace(/{{year}}/g, year)
+        .replace(/{{message}}/g, message);
+        
+        
+        const mailText = `
+            Hello Admin,
+
+            You have received a new contact form submission on Savy Prep.com. Below are the details:
+
+            Name: ${name}
+            Email: ${email}
+            Message: ${message}
+            Please review the message and take appropriate action.
+
+            Thank you.
+            Savy Prep
+        `;
+
+        const details = {
+            from: `Savy Prep <${ process.env.HOST_EMAIL }>`,
+            to: `sundaywht@gmail.com`,
+            replyTo: email,
+            subject: "New Contact Form Submission",
+            text: mailText,
+            html: Htmltemplate
+        };
+
+        mailTransporter().sendMail(details, (err, info) => {
+            // console.log(info);
+            
+            if (err) {
+                return {
+                    status: false,
+                    error: err,
+                    message: 'an error occured while sending verification mail.',
+                }
+            }
+        });
+        
+        return {
+            status: true,
+            message: 'Email sent successfully.',
+        }
+    } catch (error) {
+        return {
+            status: false,
+            error,
+            message: 'an error occured while sending verification email.',
+        }
+    }
+}
 
 export const sendEmailVerificationCode = (email: string, name = "", subject = "Email Verification Code") => {
     try {
@@ -94,7 +150,6 @@ export const sendEmailVerificationCode = (email: string, name = "", subject = "E
         }
     }
 }
-
 
 export const sendNewPasswordConfirmationMail = (
     email: string, name: string,

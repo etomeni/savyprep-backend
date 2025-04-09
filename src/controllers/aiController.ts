@@ -61,10 +61,10 @@ export const getInterviewFeedbackPrompt = (
                 Please provide the following analysis and structure your response in this format:
 
                 {
-                    totalScore: number; // Average of all category scores
+                    totalScore: number; // Average of all category scores in percentage
                     percentageScore: number; // Percentage rating of performance
                     totalQuestions: number;
-                    answeredQuestions: number;
+                    answeredQuestions: number; // The total number of questions answered by the user.
 
                     questionReviews: [
                         { 
@@ -232,8 +232,13 @@ export const getExamsQuestionsPrompt = (
     prompt += `[\n`;
     prompt += `  {\n`;
     prompt += `    "question": "Enter question text here",\n`;
-    prompt += `    "answer": "Enter correct answer here",\n`;
+    prompt += `    "aiAnswer": "Enter correct answer here",\n`;
     prompt += `    "reference": "Enter source reference (e.g., page number, chapter title)",\n`;
+
+    if (studyType == "multipleChoices") {
+        prompt += `    "options": [\n 'Enter answer option here\n', ...(repeat for all options \n) ]\n`;
+    }
+    
     prompt += `    "explanation": "Enter a brief explanation of why this is the correct answer"\n`;
     prompt += `  },\n`;
     prompt += `  ... (repeat for all ${amount} questions)\n`;
@@ -357,10 +362,10 @@ export const getExamFeedbackPrompt = (
         **Response Format (strictly return JSON in this format):**
         
         {
-            "totalScore": number, // The number of correct answers
+            "totalScore": number, // The number of correct answers in percentage
             "percentageScore": number, // Between 0 and 100
             "totalQuestions": ${totalQuestions},
-            "answeredQuestions": ${studentAnswers.length},
+            "answeredQuestions": number // The number of questions answered by the user.,
         
             "feedbackSummary": "Brief paragraph summarizing performance and effort",
             "strengths": [

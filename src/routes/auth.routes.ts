@@ -18,6 +18,7 @@ import {
     verifyEmailTokenCtr,
     sendPasswordResetEmailCtr,
     deleteAccountCtrl,
+    updateProfileCtr
 } from '@/controllers/authController.js';
 
 
@@ -140,6 +141,21 @@ router.post(
         routeValidationResult
     ],
     setNewPasswordCtr
+);
+
+// reset new password
+router.post(
+    '/update-profile',
+    [
+        body("fullName").isString().trim().notEmpty().withMessage("FullName is required"),
+        
+        body('email').trim()
+        .isEmail().withMessage('Please enter a valid email')
+        .normalizeEmail(),
+
+        routeValidationResult
+    ],
+    updateProfileCtr
 );
 
 

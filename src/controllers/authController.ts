@@ -393,6 +393,41 @@ export const setNewPasswordCtr = async (req: Request, res: Response, next: NextF
     }
 }
 
+export const updateProfileCtr = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        // const user_id = req.body.authMiddlewareParam._id;
+
+        const email = req.body.email;
+        const fullName = req.body.fullName;
+
+        const updatedUser = await userModel.findOneAndUpdate(
+            { email: email }, 
+            { fullName: fullName },
+            {
+                runValidators: true,
+                returnOriginal: false,
+            }
+        );
+
+        if (!updatedUser) {
+            return res.status(500).json({
+                status: false,
+                statusCode: 500,
+                message: 'Ooopps unable to update profile.',
+            });
+        }
+
+        return res.status(201).json({
+            status: true,
+            statusCode: 201,
+            message: 'Profile updated successfully!',
+        });
+    } catch (error: any) {
+        if (!error.statusCode) error.statusCode = 500;
+        next(error);
+    }
+}
+
 
 function setPasswordResetCode(passwordResetData: passwordResetCodeInterface) {
     // Check if the email already exists in the array
