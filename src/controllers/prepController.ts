@@ -8,6 +8,7 @@ import {
 import preparationsModel, { prepInterface } from "@/models/preparations.model.js";
 import prepFeedbackModel from "@/models/prepFeedback.model.js";
 import { uploadFileToFirebase } from "./firebase.js";
+import { uploadFileToFirebase_admin } from "./firebaseAdmin.js";
 
 // models
 // import { userModel } from '@/models/users.model.js';
@@ -298,6 +299,7 @@ export const generateExamQuestionsController = async (req: Request, res: Respons
         if (documentFiles) {
             uploadedFile = await Promise.all(
                 documentFiles.map(async element => {
+                    // const response = await uploadFileToFirebase_admin(
                     const response = await uploadFileToFirebase(
                         element, element.originalname,
                         user_id, user_email,
@@ -424,13 +426,14 @@ export const generateExamFeedbackController = async (req: Request, res: Response
                 message: 'Invalid prep. id'
             });
         }
+        console.log("hello");
         
         // get the prompt to use
         const prompt = getExamFeedbackPrompt(transcript, prepDetails.numberOfQuestions);
-        // console.log(prompt);
+        console.log(prompt);
 
         const response = await generateBySystemInstructions(prompt.prompt, prompt.system);
-        // console.log(response);
+        console.log(response);
         if (!response.status || !response.result) {
             return res.status(500).json({
                 status: false,
@@ -441,6 +444,8 @@ export const generateExamFeedbackController = async (req: Request, res: Response
         }
         
         const feedbackResponse: aiExaminerFeedbackResponseInterface = formatAiResponse(response.result);
+        console.log("feedbackResponse ", feedbackResponse);
+        
 
         const newPrepFeedback = await new prepFeedbackModel({
             userId: user_id,
@@ -466,7 +471,8 @@ export const generateExamFeedbackController = async (req: Request, res: Response
             finalAssessment: feedbackResponse.finalAssessment,
         
         }).save()
-
+        console.log("newPrepFeedback");
+        
         if (!newPrepFeedback) {
             return res.status(500).json({
                 status: false,
@@ -484,6 +490,9 @@ export const generateExamFeedbackController = async (req: Request, res: Response
             },
             {new: true}
         );
+
+        console.log("updatedInterview");
+        
 
 
         return res.status(200).json({
