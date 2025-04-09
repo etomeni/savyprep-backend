@@ -28,10 +28,7 @@ export const uploadFileToFirebase = async (
     title: string, level: string, studyType: string, amount: string,
 ) => {
     try {
-        // Create a root reference
-        // const storage = getStorage();
-        
-        // Create a reference to 'mountains.jpg'
+        // Create a reference to file
         const storageRef = ref(storage, `files/prep/${title}-${fileName}`);
         
         // Upload the file
