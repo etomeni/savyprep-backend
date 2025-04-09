@@ -84,7 +84,7 @@ export const ChatUsController = async (req: Request, res: Response, next: NextFu
 export const checkVersionUpdateController = async (req: Request, res: Response, next: NextFunction) => {
     try {
         // const user_id = req.body.authMiddlewareParam._id;
-        const userVersion = req.body.userVersion;
+        const userVersion = req.query.userVersion as string;
 
         // Split the version string into parts
         const userVersionParts = userVersion.split('.').map(Number);
