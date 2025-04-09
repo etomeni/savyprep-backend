@@ -290,6 +290,7 @@ export const generateExamQuestionsController = async (req: Request, res: Respons
         const { title, level, studyType, amount, } = req.body;
 
         const files: any = req.files;
+        console.log(files);
         const documentFiles: fileUploadIntercae[] = files.documents;
         // console.log(documentFiles);
 
@@ -302,7 +303,7 @@ export const generateExamQuestionsController = async (req: Request, res: Respons
                         user_id, user_email,
                         title, level, studyType, amount,
                     );
-                    // console.log(response);
+                    console.log(response);
 
                     // Optionally delete the local files after uploading
                     if (element.path) fs.unlinkSync(element.path);
