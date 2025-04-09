@@ -44,15 +44,19 @@ export const uploadFileToFirebase = async (
                 }
             }
         );
+        console.log(snapshot);
 
         // Get download URL
         const downloadURL = await getDownloadURL(snapshot.ref);
+        console.log(downloadURL);
 
         return {
             status: true,
             fileUrl: downloadURL
         }
     } catch (error) {
+        console.log(error);
+        
         return {
             status: false,
             // fileUrl: downloadURL
