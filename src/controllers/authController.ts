@@ -326,15 +326,15 @@ export const setNewPasswordCtr = async (req: Request, res: Response, next: NextF
             });
         }
 
-        // get the saved tempt code
-        const resetcode = getPasswordResetCodeByEmail(email);
-        if (!resetcode) {
-            return res.status(401).json({
-                status: false,
-                statusCode: 401,
-                message: 'session timeout!',
-            });
-        }
+        // // get the saved tempt code
+        // const resetcode = getPasswordResetCodeByEmail(email);
+        // if (!resetcode) {
+        //     return res.status(401).json({
+        //         status: false,
+        //         statusCode: 401,
+        //         message: 'session timeout!',
+        //     });
+        // }
 
 
         // add extra security to ensure the actual user requested for the change
@@ -347,21 +347,22 @@ export const setNewPasswordCtr = async (req: Request, res: Response, next: NextF
             });
         };
 
-        const token = authHeader.split(' ')[1];
-        const verifyRes = verifyEmailToken(resetcode.code, token);
-        if (!verifyRes.status) {
-            return res.status(401).json({
-                statusCode: 401,
-                status: false,
-                message: 'session timeout!',
-            });
-        }
+        // const token = authHeader.split(' ')[1];
+        // const verifyRes = verifyEmailToken(resetcode.code, token);
+        // if (!verifyRes.status) {
+        //     return res.status(401).json({
+        //         statusCode: 401,
+        //         status: false,
+        //         message: 'session timeout!',
+        //     });
+        // }
 
         // remove the saved code;
         removePasswordResetCode(email);
 
         // generate and update the new password hash
-        const hashedPassword = await bcryptjs.hash(newPassword, 12);
+        const hashSalt = await bcryptjs.genSalt(12);
+        const hashedPassword = await bcryptjs.hash(newPassword, hashSalt);
         const updatedUser = await userModel.findOneAndUpdate(
             { email: email }, 
             { password: hashedPassword },
@@ -382,9 +383,9 @@ export const setNewPasswordCtr = async (req: Request, res: Response, next: NextF
         // send email to user about the changed password.
         sendNewPasswordConfirmationMail(updatedUser.email, `${updatedUser.fullName}`);
 
-        return res.status(201).json({
+        return res.status(200).json({
             status: true,
-            statusCode: 201,
+            statusCode: 200,
             message: 'Password Changed successfully!',
         });
     } catch (error: any) {
