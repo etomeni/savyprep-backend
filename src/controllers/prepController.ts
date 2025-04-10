@@ -426,14 +426,12 @@ export const generateExamFeedbackController = async (req: Request, res: Response
                 message: 'Invalid prep. id'
             });
         }
-        console.log("hello");
         
         // get the prompt to use
         const prompt = getExamFeedbackPrompt(transcript, prepDetails.numberOfQuestions);
-        console.log("prompt");
 
         const response = await generateBySystemInstructions(prompt.prompt, prompt.system);
-        console.log("feedback response");
+        // console.log("feedback response");
         if (!response.status || !response.result) {
             return res.status(500).json({
                 status: false,
@@ -444,7 +442,6 @@ export const generateExamFeedbackController = async (req: Request, res: Response
         }
         
         const feedbackResponse: aiExaminerFeedbackResponseInterface = formatAiResponse(response.result);
-        console.log("formated feedbackResponse ");
         
 
         const newPrepFeedback = await new prepFeedbackModel({
@@ -471,7 +468,7 @@ export const generateExamFeedbackController = async (req: Request, res: Response
             finalAssessment: feedbackResponse.finalAssessment,
         
         }).save()
-        console.log("newPrepFeedback");
+        // console.log("newPrepFeedback");
         
         if (!newPrepFeedback) {
             return res.status(500).json({
@@ -490,8 +487,7 @@ export const generateExamFeedbackController = async (req: Request, res: Response
             },
             {new: true}
         );
-
-        console.log("updatedInterview");
+        // console.log("updatedInterview");
 
 
         return res.status(200).json({
@@ -499,6 +495,182 @@ export const generateExamFeedbackController = async (req: Request, res: Response
             statusCode: 200,
             result: {
                 feedback: newPrepFeedback,
+                // response
+            },
+            message: 'Successfully!'
+        });
+
+    } catch (error: any) {
+        console.log(error);
+        
+        if (!error.statusCode) error.statusCode = 500;
+        next(error);
+    }
+}
+
+
+// generate exam feedback
+export const generateNewPrepController = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const user_id = req.body.authMiddlewareParam._id;
+
+        const prepId: string = req.body.prepId;
+        const prepType: string = req.body.prepType;
+        const feedbackId: string = req.body.feedbackId;
+
+        const prepDetails = await preparationsModel.findById(prepId);
+        if (!prepDetails) {
+            return res.status(401).json({
+                status: false,
+                statusCode: 401,
+                message: 'Invalid prep. id'
+            });
+        }
+        
+
+        if (prepDetails.prepType == "Exam") {
+            const prompt = getExamsQuestionsPrompt(
+                prepDetails.exam.studyType, prepDetails.difficultyLevel, 
+                prepDetails.numberOfQuestions, prepDetails.exam.documents
+            );
+            // console.log(prompt);
+
+            const response = await generateByTextInput(prompt);
+            // console.log(response);
+            if (!response.status || !response.result) {
+                return res.status(500).json({
+                    status: false,
+                    statusCode: 500,
+                    // result: {},
+                    message: response.message,
+                });
+            }
+            
+            const Questions: examQuestionInterface[] = formatAiResponse(response.result);
+
+            const newPrep = await new preparationsModel({
+                userId: user_id,
+                prepType: "Exam",
+                prepTitle: prepDetails.prepTitle,
+                numberOfQuestions: prepDetails.numberOfQuestions,
+                difficultyLevel: prepDetails.difficultyLevel,
+                exam: {
+                    studyType: prepDetails.exam.studyType,
+                    documents: prepDetails.exam.documents,
+                    tags: undefined,
+                    language: undefined
+                },
+                transcript: Questions,
+                modelChatHistory: [
+                    {
+                        role: "user",
+                        parts: [{ text: prompt }]
+                    },
+                    {
+                        role: "model",
+                        // parts: [{ text: response.response?.candidates?.[0]?.content?.parts }],
+                        parts: [{ text: response.response?.candidates?.[0]?.content?.parts ?? "" }]
+                    }
+                ],
+                // status: "Not completed",
+            }).save()
+
+            if (!newPrep) {
+                return res.status(500).json({
+                    status: false,
+                    statusCode: 500,
+                    // result: {},
+                    message: "unable to save exams questions.",
+                });
+            }
+
+            return res.status(200).json({
+                status: true,
+                statusCode: 200,
+                result: {
+                    questions: Questions,
+                    prep: newPrep,
+                    // response
+                },
+                message: 'Successfully!'
+            });
+
+        } else if (prepDetails.prepType == "Interview") {
+            // TODO:::: check if the user has uploaded their CV, if so add it to the prompt
+            const prompt = getInterviewQuestionsPrompt(
+                prepDetails.interview.jobRole, prepDetails.difficultyLevel, 
+                prepDetails.interview.techstack, prepDetails.interview.interviewType, 
+                prepDetails.numberOfQuestions, prepDetails.interview.jobDescription
+            );
+
+            const response = await generateByTextInput(prompt);
+            // console.log(response);
+            if (!response.status || !response.result) {
+                return res.status(500).json({
+                    status: false,
+                    statusCode: 500,
+                    // result: {},
+                    message: response.message,
+                });
+            }
+            
+            const Questions: QuestionItemInterface[] = formatAiResponse(response.result);
+
+            const newPrep = await new preparationsModel({
+                userId: user_id,
+                prepType: "Interview",
+                prepTitle: prepDetails.prepTitle,
+                numberOfQuestions: prepDetails.numberOfQuestions,
+                difficultyLevel: prepDetails.difficultyLevel,
+                interview: {
+                    jobRole:  prepDetails.interview.jobRole,
+                    techstack: prepDetails.interview.techstack,
+                    interviewType: prepDetails.interview.interviewType,
+                    jobDescription: prepDetails.interview.jobDescription
+                },
+                transcript: Questions,
+                modelChatHistory: [
+                    {
+                        role: "user",
+                        parts: [{ text: prompt }]
+                    },
+                    {
+                        role: "model",
+                        // parts: [{ text: response.response?.candidates?.[0]?.content?.parts }],
+                        parts: [{ text: response.response?.candidates?.[0]?.content?.parts ?? "" }]
+                    }
+                ],
+                // status: "Not completed",
+            }).save()
+            // const newReleaseResponds = await newRelease.save();
+
+            if (!newPrep) {
+                return res.status(500).json({
+                    status: false,
+                    statusCode: 500,
+                    // result: {},
+                    message: "unable to save intervew questions.",
+                });
+            }
+
+            return res.status(200).json({
+                status: true,
+                statusCode: 200,
+                result: {
+                    questions: Questions,
+                    prep: newPrep,
+                    // response
+                },
+                message: 'Successfully!'
+            });
+        }
+
+
+        return res.status(200).json({
+            status: true,
+            statusCode: 200,
+            result: {
+                prep: prepDetails,
                 // response
             },
             message: 'Successfully!'

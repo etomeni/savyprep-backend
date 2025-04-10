@@ -17,6 +17,7 @@ import {
     deletePrepController,
     generateExamFeedbackController,
     generateExamQuestionsController,
+    generateNewPrepController
 } from '@/controllers/prepController.js';
 
 
@@ -89,6 +90,19 @@ router.post("/generate-exams-feedback",
         authMiddleware,
     ], 
     generateExamFeedbackController
+);
+
+// generate-new-questions
+router.post("/generate-new-questions", 
+    [
+        body("prepId").isString().trim().notEmpty().withMessage("prepId is required"),
+        body("prepType").isString().trim().notEmpty().withMessage("prepType is required"),
+        body("feedbackId").isString().trim().notEmpty().withMessage("feedbackId is required"),
+
+        routeValidationResult,
+        authMiddleware,
+    ], 
+    generateNewPrepController
 );
 
 

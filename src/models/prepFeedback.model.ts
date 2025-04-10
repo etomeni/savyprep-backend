@@ -19,6 +19,10 @@ export interface prepFeedbackInterface {
 			question: string; 
 			userAnswer: string 
 			aiAnswer: string; 
+
+			options?: string[];
+			reference?: string;
+			explanation?: string;
 		}[],
 		
 		feedbackBreakdowns?: [
@@ -64,6 +68,10 @@ const PrepFeedbackSchema = new Schema<prepFeedbackInterface>(
 			question: { type: String, required: true },
 			userAnswer: { type: String, required: true },
 			aiAnswer: { type: String, required: true },
+
+			options: { type: [String], required: false },
+			reference: { type: String, required: false },
+			explanation: { type: String, required: false },
 
 			// type: String, required: true
 		}],
