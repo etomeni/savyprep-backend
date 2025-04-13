@@ -70,7 +70,7 @@ export const getInterviewFeedbackPrompt = (
                         { 
                             question: string; 
                             userAnswer: string 
-                            aiAnswer: string; suggested answer
+                            aiAnswer: string; // suggested answer
                         },
                     ];
 
@@ -81,8 +81,8 @@ export const getInterviewFeedbackPrompt = (
                             score: number; // 0 to 100
                             comment: [
                                 {
-                                feedback: string;
-                                isPositive: boolean;
+                                    feedback: string;
+                                    isPositive: boolean;
                                 }
                             ]
                         }
@@ -369,10 +369,10 @@ export const getExamFeedbackPrompt = (
         
             "feedbackSummary": "Brief paragraph summarizing performance and effort",
             "strengths": [
-            "Point-form list of things the student did well"
+                "Point-form list of things the student did well"
             ],
             "areasForImprovement": [
-            "Point-form list of what the student needs to work on"
+                "Point-form list of what the student needs to work on"
             ],
             "finalAssessment": "Short closing statement summarizing overall performance and potential"
         }

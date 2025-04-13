@@ -125,6 +125,15 @@ export const generateInterviewQuestionsController = async (req: Request, res: Re
         
         const Questions: QuestionItemInterface[] = formatAiResponse(response.result);
 
+        if (!Questions.length) {
+            return res.status(500).json({
+                status: false,
+                statusCode: 500,
+                // result: {},
+                message: "unable to generate interview questions at the momemt, please try again."
+            });
+        }
+
         const newPrep = await new preparationsModel({
             userId: user_id,
             prepType: "Interview",
@@ -204,7 +213,7 @@ export const generateInterviewFeedbackController = async (req: Request, res: Res
         
         // get the prompt to use
         const prompt = getInterviewFeedbackPrompt(transcript);
-        console.log(prompt);
+        // console.log(prompt);
 
         const response = await generateBySystemInstructions(prompt.prompt, prompt.system);
         // console.log(response);
@@ -219,6 +228,14 @@ export const generateInterviewFeedbackController = async (req: Request, res: Res
         
         const feedbackResponse: aiInterviewerFeedbackResponseInterface = formatAiResponse(response.result);
         // console.log(feedbackResponse);
+        if (!feedbackResponse.feedbackSummary) {
+            return res.status(500).json({
+                status: false,
+                statusCode: 500,
+                // result: {},
+                message: "unable to generate interview feedback at the momemt, please try again."
+            });
+        }
         
 
         const newPrepFeedback = await new prepFeedbackModel({
@@ -356,6 +373,15 @@ export const generateExamQuestionsController = async (req: Request, res: Respons
         
         const Questions: examQuestionInterface[] = formatAiResponse(response.result);
 
+        if (!Questions.length) {
+            return res.status(500).json({
+                status: false,
+                statusCode: 500,
+                // result: {},
+                message: "unable to generate exams questions at the momemt, please try again."
+            });
+        }
+
         const newPrep = await new preparationsModel({
             userId: user_id,
             prepType: "Exam",
@@ -442,7 +468,14 @@ export const generateExamFeedbackController = async (req: Request, res: Response
         }
         
         const feedbackResponse: aiExaminerFeedbackResponseInterface = formatAiResponse(response.result);
-        
+        if (!feedbackResponse.feedbackSummary) {
+            return res.status(500).json({
+                status: false,
+                statusCode: 500,
+                // result: {},
+                message: "unable to generate exam feedback at the momemt, please try again."
+            });
+        }
 
         const newPrepFeedback = await new prepFeedbackModel({
             userId: user_id,

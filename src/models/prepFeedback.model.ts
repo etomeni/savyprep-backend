@@ -66,7 +66,7 @@ const PrepFeedbackSchema = new Schema<prepFeedbackInterface>(
 
 		questionReviews: [{
 			question: { type: String, required: true },
-			userAnswer: { type: String, required: true },
+			userAnswer: { type: String, required: false, default: '' },
 			aiAnswer: { type: String, required: true },
 
 			options: { type: [String], required: false },
