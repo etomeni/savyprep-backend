@@ -101,15 +101,23 @@ export const checkVersionUpdateController = async (req: Request, res: Response, 
 
 
         let forceUpdate = false;
+        let newUpdate = false;
 
         if (appMajor > userMajor) {
             forceUpdate = true;
+            newUpdate = true;
         } else if (appMinor > userMinor) {
             forceUpdate = true;
+            newUpdate = true;
+        } else if (appPatch > userPatch) {
+            forceUpdate =  false;
+            newUpdate = true;
         } else if (appVersion.forceUpdate && appPatch > userPatch) {
             forceUpdate = true;
+            newUpdate = true;
         } else{
             forceUpdate =  false;
+            newUpdate =  false;
         }
 
         return res.status(200).json({
@@ -117,6 +125,7 @@ export const checkVersionUpdateController = async (req: Request, res: Response, 
             statusCode: 200,
             result: {
                 forceUpdate,
+                newUpdate,
                 latestVersion: appVersion.latestVersion
             },
             message: "success"
