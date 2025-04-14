@@ -11,7 +11,7 @@ import { contactUsModel } from "@/models/contact.model.js";
 
 const appVersion = {
     // stableVerion: '1.0.0',
-    latestVersion: '1.2.0',
+    latestVersion: '1.3.0',
     forceUpdate: false,
 };
 
