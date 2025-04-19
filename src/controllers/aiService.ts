@@ -1,3 +1,4 @@
+import { aiContentInterface } from "@/util/types";
 import {
     GoogleGenAI,
     createUserContent,
@@ -463,6 +464,25 @@ export const getExamFeedbackPrompt_v2 = (
 };
 
 
+// GENERATE DISCUSS
+export const getDiscussPrompt = (
+    prepType: "examiner" | "interviewer",
+    userPrompt: string,
+) => {
+    let systemPrompt = `You are an AI ${prepType}. `;
+    systemPrompt += `Your task is to discuss and assist the ${prepType == "examiner" ? "student" : "candidate"} `;
+    systemPrompt += `with their ${prepType == "examiner" ? "exam" : "interview"} preparation. `;
+    systemPrompt += `You can help discuss and analyze preparation practice questions and answers, suggest study strategies, or simulate interview scenarios. `;
+    systemPrompt += `Your responds should be friendly, short, precis, well detailed and easy to understand. `;
+
+
+    return {
+        userPrompt,
+        system: systemPrompt
+    }
+};
+
+
 
 export async function generateByTextInput(promptContent: string) {
     try {
@@ -481,13 +501,14 @@ export async function generateByTextInput(promptContent: string) {
             },
 
         });
-        console.log(response);
+        // console.log(generateByTextInput);
+        // console.dir(response, { depth: null }) // `depth: null` ensures unlimited recursion
 
         return {
             status: true,
             message: "Success.",
             result: response.text,
-            id: response.responseId,
+            // id: response.responseId,
             response,
         }
 
@@ -523,7 +544,8 @@ export async function generateByFileInput(promptContent: string, filePath: strin
                 ]),
             ],
         });
-        console.log(response);
+        // console.log("generateByFileInput");
+        // console.dir(response, { depth: null }) // `depth: null` ensures unlimited recursion
 
         return {
             status: true,
@@ -552,7 +574,8 @@ export async function generateBySystemInstructions(promptContent: string, system
                 systemInstruction: systemPrompt, // "You are a cat. Your name is Neko.",
             },
         });
-        console.log(response);
+        // console.log(response);
+        // console.dir(response, { depth: null }) // `depth: null` ensures unlimited recursion
 
         return {
             status: true,
@@ -572,6 +595,47 @@ export async function generateBySystemInstructions(promptContent: string, system
     }
 }
 
+
+export async function generateBySystemInstructionsWithHistory(
+    promptContent: string, systemPrompt: string,
+    initialPrepGeneration: aiContentInterface[],
+    historyContent: aiContentInterface[]
+) {
+    try {
+        const response = await ai.models.generateContent({
+            model: "gemini-2.0-flash",
+            contents: [
+                ...initialPrepGeneration,
+                ...historyContent,
+                {
+                    role: "user",
+                    text: promptContent,
+                }
+            ],
+            config: {
+                systemInstruction: systemPrompt,
+            },
+        });
+        // console.log(response);
+        // console.dir(response, { depth: null }) // `depth: null` ensures unlimited recursion
+
+        return {
+            status: true,
+            message: "Success.",
+            result: response.text,
+            id: response.responseId,
+            response,
+        }
+
+    } catch (error) {
+        console.log(error);
+
+        return {
+            status: false,
+            message: "Something went wrong"
+        }
+    }
+}
 
 
 async function uploadRemotePDF(url: string, displayName: string) {
@@ -594,8 +658,8 @@ async function uploadRemotePDF(url: string, displayName: string) {
     let getFile = await ai.files.get({ name: file.name });
     while (getFile.state === 'PROCESSING') {
         getFile = await ai.files.get({ name: file.name });
-        console.log(`current file status: ${getFile.state}`);
-        console.log('File is still processing, retrying in 5 seconds');
+        // console.log(`current file status: ${getFile.state}`);
+        // console.log('File is still processing, retrying in 5 seconds');
 
         await new Promise((resolve) => {
             setTimeout(resolve, 5000);

@@ -34,10 +34,19 @@ export interface prepInterface {
 	}[],
 
 	modelChatHistory: {
-		// responseId: string,
-        role: "user" | "model",
-        parts: { text: string }[],
-	}[];
+		// _id: string,
+        prompt: string,
+        systemPrompt: string,
+
+        responseRole: "user" | "model" | "assistant" | "system",
+        responseText: string,
+	};
+
+	// modelChatHistory: {
+	// 	// responseId: string,
+    //     role: "user" | "model",
+    //     parts: { text: string }[],
+	// }[];
 
 	status: "Not completed" | "Pre-Saved" | "Processing" | "Completed";
 }
@@ -89,11 +98,19 @@ const PreparationSchema = new Schema<prepInterface>(
 		},
 
 		modelChatHistory: {
-			type: [{
-				role: { type: String, enum: ['user', 'model'] }, // "user" | "model", 
-				parts: { text: { type: String } }
-			}]
+			prompt: { type: String, required: true },
+			systemPrompt: { type: String, required: false, default: '' },
+
+			responseRole: { type: String, enum: ['user', 'model', "assistant", "system"], required: true },
+			responseText: { type: String, required: true },
 		},
+
+		// modelChatHistory: {
+		// 	type: [{
+		// 		role: { type: String, enum: ['user', 'model'] }, // "user" | "model", 
+		// 		parts: { text: { type: String } }
+		// 	}]
+		// },
 
 		status: { type: String, enum: ["Not completed", "Pre-Saved", "Processing", "Completed"], default: "Not completed" }
 	},

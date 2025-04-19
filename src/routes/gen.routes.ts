@@ -10,7 +10,8 @@ import routeValidationResult from '@/middleware/routeValidationResult.js';
 import { 
     ChatUsController,
     getDashboardStatController,
-    checkVersionUpdateController
+    checkVersionUpdateController,
+    setPushNotificationTokenController
 } from '@/controllers/genController.js';
 
 
@@ -53,6 +54,17 @@ router.get("/check-version-update",
         // authMiddleware,
     ], 
     checkVersionUpdateController
+);
+
+// set Push Notification Token
+router.post("/setPushNotificationToken", 
+    [
+        body("notificationToken").isString().trim().notEmpty().withMessage("notification token is required"),
+
+        routeValidationResult,
+        // authMiddleware,
+    ], 
+    setPushNotificationTokenController
 );
 
 

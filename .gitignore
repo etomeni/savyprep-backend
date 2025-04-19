@@ -34,3 +34,5 @@ npm-debug.log*
 /plugins
 /www
 /.angular
+
+*savy-prep-firebase-adminsdk-fbsvc-6108a79732.json

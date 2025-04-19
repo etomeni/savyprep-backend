@@ -12,12 +12,15 @@ import {
     generateInterviewFeedbackController,
     generateInterviewQuestionsController,
     getUserPracticeQuestionsController,
-    getQuestionsByIdController,
+    getPrepByIdController,
     getFeedbackController,
     deletePrepController,
     generateExamFeedbackController,
     generateExamQuestionsController,
-    generateNewPrepController
+    generateNewPrepController,
+    getDiscussMessagesController,
+    generatePrepDiscusController,
+    generateFeedbackPdfController
 } from '@/controllers/prepController.js';
 
 
@@ -106,7 +109,7 @@ router.post("/generate-new-questions",
 );
 
 
-// get paginated data of interviews
+// get paginated data of preparations
 router.get("/", 
     [
         query('page')
@@ -127,15 +130,15 @@ router.get("/",
     getUserPracticeQuestionsController
 );
 
-// get interviews by id
-router.get("/:prepId", 
+// get preparations details by id
+router.get("/details/:prepId", 
     [
         param("prepId").isString().trim().notEmpty().withMessage("prepId is required"),
 
         routeValidationResult,
         authMiddleware,
     ], 
-    getQuestionsByIdController
+    getPrepByIdController
 );
 
 // get feedback by prep id
@@ -149,6 +152,39 @@ router.get("/feedback/:prepId",
     getFeedbackController
 );
 
+// get feedback by prep id
+router.post("/discussions", 
+    [
+        body("prepId").isString().trim().notEmpty().withMessage("Prep Id is required"),
+        body("prepFeedbackId").isString().trim().notEmpty().withMessage("feedback Id is required"),
+
+        body('page')
+            .exists().withMessage('Page is required')
+            .isInt({ min: 1 }).withMessage('Page must be a positive integer'),
+
+        body('limit')
+            .exists().withMessage('Limit is required')
+            .isInt({ min: 1 }).withMessage('Limit must be a positive integer'),
+
+        routeValidationResult,
+        authMiddleware,
+    ], 
+    getDiscussMessagesController
+);
+
+// get feedback by prep id
+router.post("/chat", 
+    [
+        body("prepId").isString().trim().notEmpty().withMessage("Prep Id is required"),
+        body("prepFeedbackId").isString().trim().notEmpty().withMessage("feedback Id is required"),
+        body("userPrompt").isString().trim().notEmpty().withMessage("message is required"),
+
+        routeValidationResult,
+        authMiddleware,
+    ], 
+    generatePrepDiscusController
+);
+
 // delete an interview
 router.delete("/:prepId",
     [
@@ -160,6 +196,20 @@ router.delete("/:prepId",
         authMiddleware,
     ], 
     deletePrepController
+);
+
+
+// generate Feedback Report PDF Controller
+router.get("/generate-pdf",
+    [
+        query('feedbackId')
+            .isString().trim()
+            .notEmpty().withMessage('feedbackId is required'),
+
+        routeValidationResult,
+        authMiddleware,
+    ], 
+    generateFeedbackPdfController
 );
 
 export default router;

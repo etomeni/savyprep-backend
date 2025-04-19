@@ -44,6 +44,15 @@ export interface prepFeedbackInterface {
 		finalAssessment: string; // A brief closing statement summarizing the candidate’s overall performance
 	// },
 
+	modelChatHistory: {
+		// _id: string,
+        prompt: string,
+        systemPrompt: string,
+
+        responseRole: "user" | "model" | "assistant" | "system",
+        responseText: string,
+	};
+
 	createdAt: string;
 	updatedAt: string;
 }
@@ -91,6 +100,15 @@ const PrepFeedbackSchema = new Schema<prepFeedbackInterface>(
 		strengths: [{ type: String, required: true }],
 		areasForImprovement: [{ type: String, required: true }],
 		finalAssessment: { type: String, required: true },
+
+		modelChatHistory: {
+			prompt: { type: String, required: true },
+			systemPrompt: { type: String, required: false, default: '' },
+
+			responseRole: { type: String, enum: ['user', 'model', "assistant", "system"], required: true },
+			responseText: { type: String, required: true },
+		},
+
 	},
 	{ timestamps: true }
 );

@@ -137,4 +137,28 @@ export const checkVersionUpdateController = async (req: Request, res: Response, 
     }
 }
 
+// set Push Notification Token
+export const setPushNotificationTokenController = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        // const user_id = req.body.authMiddlewareParam._id;
+        const notificationToken = req.body.notificationToken as string;
+
+
+        return res.status(200).json({
+            status: true,
+            statusCode: 200,
+            result: {
+                // forceUpdate,
+                // newUpdate,
+                // latestVersion: appVersion.latestVersion
+            },
+            message: "success"
+        });
+
+    } catch (error: any) {
+        if (!error.statusCode) error.statusCode = 500;
+        next(error);
+    }
+}
+
 

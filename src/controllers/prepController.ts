@@ -1,14 +1,18 @@
 import { Request, Response, NextFunction } from "express-serve-static-core";
 import fs from "fs";
 import {
-    generateBySystemInstructions, generateByTextInput, 
+    generateBySystemInstructions, generateBySystemInstructionsWithHistory, generateByTextInput, 
+    getDiscussPrompt, 
     getExamFeedbackPrompt, getExamsQuestionsPrompt, 
     getInterviewFeedbackPrompt, getInterviewQuestionsPrompt 
-} from "./aiController.js";
+} from "./aiService.js";
 import preparationsModel, { prepInterface } from "@/models/preparations.model.js";
 import prepFeedbackModel from "@/models/prepFeedback.model.js";
-import { uploadFileToFirebase } from "./firebase.js";
+// import { uploadFileToFirebase } from "./firebase.js";
 import { uploadFileToFirebase_admin } from "./firebaseAdmin.js";
+import prepDiscussModel from "@/models/prepDiscuss.model.js";
+import { generateFeedbackPDF } from "./pdfService.js";
+// import { feedbackData } from "@/util/types.js";
 
 // models
 // import { userModel } from '@/models/users.model.js';
@@ -153,17 +157,23 @@ export const generateInterviewQuestionsController = async (req: Request, res: Re
             //     language: undefined
             // },
             transcript: Questions,
-            modelChatHistory: [
-                {
-                    role: "user",
-                    parts: [{ text: prompt }]
-                },
-                {
-                    role: "model",
-                    // parts: [{ text: response.response?.candidates?.[0]?.content?.parts }],
-                    parts: [{ text: response.response?.candidates?.[0]?.content?.parts ?? "" }]
-                }
-            ],
+            // modelChatHistory: [
+            //     {
+            //         role: "user",
+            //         parts: [{ text: prompt }]
+            //     },
+            //     {
+            //         role: "model",
+            //         // parts: [{ text: response.response?.candidates?.[0]?.content?.parts }],
+            //         parts: [{ text: response.response?.candidates?.[0]?.content?.parts ?? "" }]
+            //     }
+            // ],
+            modelChatHistory: {
+                prompt: prompt,
+                systemPrompt: '',
+                responseRole: response.response?.candidates?.[0]?.content?.role ?? "model",
+                responseText: response.result
+            },
             // status: "Not completed",
         }).save()
         // const newReleaseResponds = await newRelease.save();
@@ -260,6 +270,13 @@ export const generateInterviewFeedbackController = async (req: Request, res: Res
             strengths: feedbackResponse.strengths,
             areasForImprovement: feedbackResponse.areasForImprovement,
             finalAssessment: feedbackResponse.finalAssessment,
+
+            modelChatHistory: {
+                prompt: prompt.prompt,
+                systemPrompt: prompt.system,
+                responseRole: response.response?.candidates?.[0]?.content?.role ?? "model",
+                responseText: response.result
+            },
         
         }).save()
 
@@ -316,8 +333,8 @@ export const generateExamQuestionsController = async (req: Request, res: Respons
         if (documentFiles) {
             uploadedFile = await Promise.all(
                 documentFiles.map(async element => {
-                    // const response = await uploadFileToFirebase_admin(
-                    const response = await uploadFileToFirebase(
+                    const response = await uploadFileToFirebase_admin(
+                    // const response = await uploadFileToFirebase(
                         element, element.originalname,
                         user_id, user_email,
                         title, level, studyType, amount,
@@ -395,17 +412,25 @@ export const generateExamQuestionsController = async (req: Request, res: Respons
                 language: undefined
             },
             transcript: Questions,
-            modelChatHistory: [
-                {
-                    role: "user",
-                    parts: [{ text: prompt }]
-                },
-                {
-                    role: "model",
-                    // parts: [{ text: response.response?.candidates?.[0]?.content?.parts }],
-                    parts: [{ text: response.response?.candidates?.[0]?.content?.parts ?? "" }]
-                }
-            ],
+            // modelChatHistory: [
+            //     {
+            //         role: "user",
+            //         parts: [{ text: prompt }]
+            //     },
+            //     {
+            //         role: "model",
+            //         // parts: [{ text: response.response?.candidates?.[0]?.content?.parts }],
+            //         parts: [{ text: response.response?.candidates?.[0]?.content?.parts ?? "" }]
+            //     }
+            // ],
+
+            modelChatHistory: {
+                prompt: prompt,
+                systemPrompt: '',
+                responseRole: response.response?.candidates?.[0]?.content?.role ?? "model",
+                responseText: response.result
+            },
+
             // status: "Not completed",
         }).save()
 
@@ -499,6 +524,13 @@ export const generateExamFeedbackController = async (req: Request, res: Response
             strengths: feedbackResponse.strengths,
             areasForImprovement: feedbackResponse.areasForImprovement,
             finalAssessment: feedbackResponse.finalAssessment,
+
+            modelChatHistory: {
+                prompt: prompt.prompt,
+                systemPrompt: prompt.system,
+                responseRole: response.response?.candidates?.[0]?.content?.role ?? "model",
+                responseText: response.result
+            },
         
         }).save()
         // console.log("newPrepFeedback");
@@ -541,8 +573,187 @@ export const generateExamFeedbackController = async (req: Request, res: Response
     }
 }
 
+// generate discuss response
+export const generatePrepDiscusController = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const user_id = req.body.authMiddlewareParam._id;
+        const user_email = req.body.authMiddlewareParam.email;
 
-// generate exam feedback
+        const prepId: string = req.body.prepId;
+        const prepFeedbackId: string = req.body.prepFeedbackId;
+        const userPrompt: string = req.body.userPrompt;
+
+        const prepDetails = await preparationsModel.findById(prepId).lean();
+        if (!prepDetails) {
+            return res.status(401).json({
+                status: false,
+                statusCode: 401,
+                message: 'Invalid prep id'
+            });
+        }
+
+        const prepFeedback = await prepFeedbackModel.findById(prepFeedbackId).lean();
+        if (!prepFeedback) {
+            return res.status(401).json({
+                status: false,
+                statusCode: 401,
+                message: 'Invalid prep feedback id'
+            });
+        }
+
+        const prepDiscussions = await prepDiscussModel.find({
+            userId: user_id,
+            prepId: prepId, 
+            prepFeedbackId: prepFeedbackId,  
+        }).lean();
+        const discussions = prepDiscussions.map(({ role, text }) => ({ role, text }));
+
+
+        // get the prompt to use
+        const prompt = getDiscussPrompt(
+            prepDetails.prepType == "Exam" ? "examiner" : "interviewer",
+            userPrompt
+        );
+
+        // generate a discuss response
+        const response = await generateBySystemInstructionsWithHistory(
+            prompt.userPrompt, prompt.system,
+            [
+                {
+                    role: "user",
+                    text: prepDetails.modelChatHistory.prompt
+                },
+                {
+                    role: prepDetails.modelChatHistory.responseRole,
+                    text: prepDetails.modelChatHistory.responseText
+                },
+                // feedback
+                {
+                    role: 'user',
+                    text: prepFeedback.modelChatHistory.prompt
+                },
+                {
+                    role: prepFeedback.modelChatHistory.responseRole,
+                    text: prepFeedback.modelChatHistory.responseText,
+                }
+            ],
+            discussions
+        );
+        // console.log("discuss response ", response);
+        if (!response.status || !response.result) {
+            return res.status(500).json({
+                status: false,
+                statusCode: 500,
+                // result: {},
+                message: response.message,
+            });
+        }
+        
+
+        const userDiscussion = await new prepDiscussModel({
+            userId: user_id,
+            userEmail: user_email,
+
+            prepId: prepDetails._id || prepId,
+            prepFeedbackId: prepFeedback._id,
+
+            role: 'user',
+            text: userPrompt,
+        }).save()
+
+        const aiDiscussReponse = await new prepDiscussModel({
+            userId: user_id,
+            userEmail: user_email,
+
+            prepId: prepDetails._id || prepId,
+            prepFeedbackId: prepFeedback._id,
+
+            role: response.response?.candidates?.[0]?.content?.role ?? "assistant",
+            text: response.result,
+        }).save()
+        // console.log("newPrepFeedback");
+        
+        if (!userDiscussion || !aiDiscussReponse) {
+            return res.status(500).json({
+                status: false,
+                statusCode: 500,
+                // result: {},
+                message: "unable to save ai assistant response.",
+            });
+        }
+
+        return res.status(200).json({
+            status: true,
+            statusCode: 200,
+            result: {
+                userDiscussion: userDiscussion,
+                aiDiscussReponse: aiDiscussReponse,
+            },
+            message: 'Successfully!'
+        });
+
+    } catch (error: any) {
+        console.log(error);
+        
+        if (!error.statusCode) error.statusCode = 500;
+        next(error);
+    }
+}
+
+// get discuss messages
+export const getDiscussMessagesController = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const user_id = req.body.authMiddlewareParam._id;
+        
+        const page = parseInt(req.body.page as string) || 1; // Current page number, default is 1
+        const limit = parseInt(req.body.limit as string) || 25; // Number of items per page, default is 25
+
+        const prepId = req.body.prepId as string;
+        const prepFeedbackId = req.body.prepFeedbackId as string;
+
+        // Find only the prep of the login user
+        const prepDiscussions = await prepDiscussModel.find({ 
+            userId: user_id,
+            prepId, prepFeedbackId,
+        })
+            .sort({ createdAt: -1 })  // Sort by createdAt in descending order
+            .limit(limit) // Set the number of items per page
+            .skip((page - 1) * limit) // Skip items to create pages
+            .exec();
+
+        if (!prepDiscussions) {
+            return res.status(401).json({
+                status: false,
+                statusCode: 401,
+                message: "Invalid prep id's."
+            });
+        };
+
+        // Count total doc. for the user to support pagination
+        const totalDocuments = await prepDiscussModel.countDocuments({ 
+            userId: user_id, 
+            prepId, prepFeedbackId,
+        });
+
+        return res.status(200).json({
+            status: true,
+            statusCode: 200,
+            result: {
+                discussions: prepDiscussions,
+
+                totalPages: Math.ceil(totalDocuments / limit), // Calculate total pages
+                currentPage: page,
+                totalRecords: totalDocuments,
+            },
+            message: 'Successfully!'
+        });
+    } catch (error: any) {
+        if (!error.statusCode) error.statusCode = 500;
+        next(error);
+    }
+}
+
+// generate new prep
 export const generateNewPrepController = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const user_id = req.body.authMiddlewareParam._id;
@@ -719,7 +930,7 @@ export const generateNewPrepController = async (req: Request, res: Response, nex
 
 
 
-// get paginated practice questions by user id
+// get paginated preparations
 export const getUserPracticeQuestionsController = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const user_id = req.body.authMiddlewareParam._id;
@@ -779,12 +990,12 @@ export const getUserPracticeQuestionsController = async (req: Request, res: Resp
     }
 }
 
-// get one questions by id
-export const getQuestionsByIdController = async (req: Request, res: Response, next: NextFunction) => {
+// get one prep by id
+export const getPrepByIdController = async (req: Request, res: Response, next: NextFunction) => {
     try {
         // const user_id = req.body.authMiddlewareParam._id;
 
-        const prepId: string = req.params.prepId;
+        const prepId = req.params.prepId as string;
 
         const practicePrep = await preparationsModel.findById(prepId);
         if (!practicePrep) {
@@ -862,6 +1073,55 @@ export const deletePrepController = async (req: Request, res: Response, next: Ne
             },
             message: 'Successfully!'
         });
+
+    } catch (error: any) {
+        if (!error.statusCode) error.statusCode = 500;
+        next(error);
+    }
+}
+
+
+
+
+// generate Feedback Report PDF Controller
+export const generateFeedbackPdfController = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        // const user_id = req.body.authMiddlewareParam._id;
+        // const prepId: string = req.params.prepId;
+        // const userId = "67ee3f5b8213945fe4b01076";
+        // const prepId = "67fe59b86db9e38ef1fc322e";
+        // const feedbackpId = "67fe5a376db9e38ef1fc323c";
+
+        const feedbackId = req.query.feedbackId;
+        const feedbackData = await prepFeedbackModel.findById(feedbackId).lean();
+        if (!feedbackData) {
+            return res.status(500).json({
+                status: false,
+                statusCode: 500,
+                result: {},
+                message: 'Failed! Something went wrong.'
+            });
+        }
+
+        // Generate PDF (pass your logo path here)
+        const pdfBuffer = await generateFeedbackPDF(feedbackData, './uploads/logo.png');
+
+        // Set response headers
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename=${feedbackData.prepTitle.replace(/ /g, '_')}_Feedback.pdf`);
+
+        // Send the PDF
+        return res.send(pdfBuffer);
+
+
+        // return res.status(200).json({
+        //     status: true,
+        //     statusCode: 200,
+        //     result: {
+        //         pdf: pdfBuffer
+        //     },
+        //     message: 'Successfully!'
+        // });
 
     } catch (error: any) {
         if (!error.statusCode) error.statusCode = 500;
